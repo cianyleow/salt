@@ -46,6 +46,7 @@ import salt.utils.url
 import salt.utils.user
 from salt.exceptions import CommandExecutionError, MinionError, SaltInvocationError
 from salt.exceptions import get_error_message as _get_error_message
+from salt.loader.duner import __file_client__
 from salt.utils.files import HASHES, HASHES_REVMAP
 from salt.utils.versions import Version
 
@@ -4562,6 +4563,8 @@ def apply_template_on_contents(contents, template, context, defaults, saltenv):
         context_dict = defaults if defaults else {}
         if context:
             context_dict.update(context)
+        if "fileclient" not in context_dict and __file_client__:
+            context_dict["fileclient"] = __file_client__.value()
         # Apply templating
         contents = salt.utils.templates.TEMPLATE_REGISTRY[template](
             contents,
@@ -4797,6 +4800,8 @@ def get_managed(
                 context_dict = defaults if defaults else {}
                 if context:
                     context_dict.update(context)
+                if "fileclient" not in context_dict and __file_client__:
+                    context_dict["fileclient"] = __file_client__.value()
                 data = salt.utils.templates.TEMPLATE_REGISTRY[template](
                     sfn,
                     name=name,

@@ -737,6 +737,7 @@ class Pillar:
                             self.opts["renderer_whitelist"],
                             saltenv=saltenv,
                             _pillar_rend=True,
+                            context={"fileclient": self.client},
                         )
                     )
         except Exception as exc:  # pylint: disable=broad-except
@@ -773,6 +774,7 @@ class Pillar:
                                 self.opts["renderer_whitelist"],
                                 saltenv=saltenv,
                                 _pillar_rend=True,
+                                context={"fileclient": self.client},
                             )
                         )
                     except Exception as exc:  # pylint: disable=broad-except
@@ -935,6 +937,14 @@ class Pillar:
                 return None, mods, errors
         state = None
         try:
+            if "context" not in defaults:
+                defaults["context"] =  {"fileclient": self.client}
+            else:
+                if (
+                    isinstance(defaults["context"], dict)
+                    and "fileclient" not in defaults["context"]
+                ):
+                    defaults["context"]["fileclient"] = self.client
             state = compile_template(
                 fn_,
                 self.rend,

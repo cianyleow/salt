@@ -446,15 +446,85 @@ def test_apply_template_on_contents():
     """
     contents = "This is a {{ template }}."
     defaults = {"template": "templated file"}
-    with patch.object(SaltCacheLoader, "file_client", Mock()):
-        ret = filemod.apply_template_on_contents(
-            contents,
-            template="jinja",
-            context={"opts": filemod.__opts__},
-            defaults=defaults,
+    ret = filemod.apply_template_on_contents(
+        contents,
+        template="jinja",
+        context={"opts": filemod.__opts__, "fileclient": Mock()},
+        defaults=defaults,
+        saltenv="base",
+    )
+    assert ret == "This is a templated file."
+
+
+def test_apply_template_on_contents_always_uses_context_file_client():
+    """
+    Tests that the templating engine receives the correct file_client
+    from the passed in context
+    """
+    dummy_renderer_mock = MagicMock()
+
+    with patch.dict(
+        salt.utils.templates.TEMPLATE_REGISTRY, {"dummy": dummy_renderer_mock}
+    ):
+        filemod.apply_template_on_contents(
+            "This is a template",
+            template="dummy",
+            context={"fileclient": "CONTEXT_FILE_CLIENT"},
+            defaults={"fileclient": "DEFAULT_FILE_CLIENT"},
             saltenv="base",
         )
-    assert ret == "This is a templated file."
+
+    _, kwargs = dummy_renderer_mock.call_args
+
+    assert kwargs["context"]["fileclient"] == "CONTEXT_FILE_CLIENT"
+
+
+def test_apply_template_on_contents_uses_persistent_file_client_if_not_in_context():
+    """
+    Tests that the templating engine gets a file client from __file_client__
+    if it exists when one is not provided via the context
+    """
+    dummy_renderer_mock = MagicMock()
+
+    with patch.dict(
+        salt.utils.templates.TEMPLATE_REGISTRY, {"dummy": dummy_renderer_mock}
+    ), patch(
+        "salt.loader.dunder.__file_client__.value", return_value="DUNDER_FILE_CLIENT"
+    ):
+        filemod.apply_template_on_contents(
+            "This is a template",
+            template="dummy",
+            context=None,
+            defaults=None,
+            saltenv="base",
+        )
+
+    _, kwargs = dummy_renderer_mock.call_args
+
+    assert kwargs["context"]["fileclient"] == "DUNDER_FILE_CLIENT"
+
+
+def test_apply_template_on_contents_uses_no_file_client_if_not_in_context_or_dunder():
+    """
+    Tests that the templating engine gets no file client if it
+    does not exist in the context or __file_client__ dunder
+    """
+    dummy_renderer_mock = MagicMock()
+
+    with patch.dict(
+        salt.utils.templates.TEMPLATE_REGISTRY, {"dummy": dummy_renderer_mock}
+    ), patch("salt.loader.dunder.__file_client__", None):
+        filemod.apply_template_on_contents(
+            "This is a template",
+            template="dummy",
+            context=None,
+            defaults=None,
+            saltenv="base",
+        )
+
+    _, kwargs = dummy_renderer_mock.call_args
+
+    assert "fileclient" not in kwargs["context"]
 
 
 def test_get_diff():

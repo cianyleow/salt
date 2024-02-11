@@ -4290,6 +4290,11 @@ class BaseHighState:
         """
         Render a state file and retrieve all of the include states
         """
+        if context is None:
+            context = {"fileclient": self.client}
+        if "fileclient" not in context:
+            context["fileclient"] = self.client
+
         errors = []
         if not local:
             state_data = self.client.get_state(sls, saltenv)
